@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>DAMIÁN · Crónicas del Rayo</title>
+<style>
+:root{
+  --bg-void:#0a0e1a;
+  --bg-panel:#121829;
+  --bg-panel-light:#1c2540;
+  --border-pixel:#3a4570;
+  --border-bright:#5d6fb8;
+  --blue-phase:#3b6fe0;
+  --blue-phase-dark:#1f3d8c;
+  --green-phase:#3fd17a;
+  --green-phase-dark:#1f7a45;
+  --red-phase:#e0473b;
+  --red-phase-dark:#8c1f1f;
+  --skin:#e8b48a;
+  --hp-green:#4ade80;
+  --hp-yellow:#fbbf24;
+  --hp-red:#f87171;
+  --mp-blue:#60a5fa;
+  --text-main:#e8ecf8;
+  --text-dim:#8a93b8;
+  --gold:#f5c542;
+  --font-pixel:'Pixel','Courier New',monospace;
+}
+
+@font-face{
+  font-family:'Pixel';
+  src:local('Press Start 2P');
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+
+html,body{
+  width:100%;height:100%;
+  background:var(--bg-void);
+  color:var(--text-main);
+  font-family:var(--font-pixel);
+  overflow:hidden;
+  image-rendering:pixelated;
+  user-select:none;
+}
+
+#game-root{
+  position:relative;
+  width:100%;
+  height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:
+    radial-gradient(ellipse at 50% 0%, #1a2240 0%, #0a0e1a 70%);
+}
+
+#game-frame{
+  position:relative;
+  width:960px;
+  height:600px;
+  max-width:100vw;
+  max-height:100vh;
+  background:var(--bg-void);
+  border:4px solid var(--border-pixel);
+  box-shadow:
+    0 0 0 4px var(--bg-void),
+    0 0 0 8px var(--border-bright),
+    0 20px 60px rgba(0,0,0,.8);
+  overflow:hidden;
+  image-rendering:pixelated;
+}
+
+@media (max-width: 980px){
+  #game-frame{
+    width:100vw;
+    height:100vh;
+    border-width:2px;
+    box-shadow:none;
+  }
+}
+
+.screen{
+  position:absolute;
+  inset:0;
+  display:none;
+  flex-direction:column;
+  background:var(--bg-void);
+}
+.screen.active{display:flex;}
+
+/* ---------- SCANLINE / CRT FEEL ---------- */
+.crt-overlay{
+  position:absolute;inset:0;pointer-events:none;z-index:999;
+  background:repeating-linear-gradient(
+    0deg,
+    rgba(0,0,0,0.12) 0px,
+    rgba(0,0,0,0.12) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode:multiply;
+  opacity:.5;
+}
+
+/* ---------- TITLE SCREEN ---------- */
+#screen-title{
+  align-items:center;justify-content:center;
+  background:
+    linear-gradient(180deg, #0a0e1a 0%, #131b32 55%, #0a0e1a 100%);
+  position:relative;
+}
+.title-stars{
+  position:absolute;inset:0;
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, #fff, transparent),
+    radial-gradient(1px 1px at 80% 10%, #fff, transparent),
+    radial-gradient(1px 1px at 30% 70%, #fff, transparent),
+    radial-gradient(1px 1px at 60% 40%, #fff, transparent),
+    radial-gradient(1px 1px at 90% 80%, #fff, transparent),
+    radial-gradient(1px 1px at 45% 90%, #fff, transparent),
+    radial-gradient(1px 1px at 15% 55%, #fff, transparent),
+    radial-gradient(1px 1px at 70% 65%, #fff, transparent);
+  opacity:.6;
+}
+.title-logo{
+  text-align:center;
+  z-index:2;
+  margin-bottom:18px;
+}
+.title-logo h1{
+  font-size:42px;
+  color:var(--blue-phase);
+  text-shadow:
+    4px 4px 0 var(--red-phase),
+    -2px -2px 0 var(--green-phase);
+  letter-spacing:4px;
+  animation:title-flicker 3s infinite;
+}
+.title-logo .subtitle{
+  font-size:12px;
+  color:var(--gold);
+  margin-top:14px;
+  letter-spacing:3px;
+}
+@keyframes title-flicker{
+  0%,92%,100%{opacity:1;}
+  94%{opacity:.7;}
+  96%{opacity:1;}
+}
+#title-sprite-box{
+  width:96px;height:96px;
+  margin:0 auto 20px;
+  image-rendering:pixelated;
+}
+.menu-list{
+  display:flex;flex-direction:column;gap:10px;
+  z-index:2;
+  margin-top:10px;
+}
+.menu-btn{
+  font-family:var(--font-pixel);
+  background:var(--bg-panel);
+  border:3px solid var(--border-pixel);
+  color:var(--text-main);
+  padding:12px 36px;
+  font-size:13px;
+  cursor:pointer;
+  letter-spacing:2px;
+  position:relative;
+  transition:transform .08s;
+}
+.menu-btn::before{
+  content:'▶';
+  position:absolute;left:14px;top:50%;
+  transform:translateY(-50%) scale(0);
+  color:var(--gold);
+  transition:transform .12s;
+}
+.menu-btn:hover{
+  border-color:var(--gold);
+  color:var(--gold);
+  transform:translateX(4px);
+}
+.menu-btn:hover::before{transform:translateY(-50%) scale(1);}
+.menu-btn:active{transform:translateX(2px) scale(.98);}
+.menu-btn:disabled{opacity:.35;cursor:not-allowed;}
+.menu-btn:disabled:hover{transform:none;border-color:var(--border-pixel);color:var(--text-main);}
+
+.corner-tag{
+  position:absolute;
+  bottom:10px;right:14px;
+  font-size:9px;
+  color:var(--text-dim);
+  z-index:2;
+}
+
+/* ---------- HUD / TOP BAR ---------- */
+.topbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:8px 14px;
+  background:var(--bg-panel);
+  border-bottom:3px solid var(--border-pixel);
+  font-size:10px;
+  flex-shrink:0;
+}
+.topbar .tb-left{display:flex;gap:14px;align-items:center;}
+.topbar button.iconbtn{
+  font-family:var(--font-pixel);
+  background:var(--bg-panel-light);
+  border:2px solid var(--border-pixel);
+  color:var(--text-main);
+  font-size:9px;
+  padding:6px 10px;
+  cursor:pointer;
+}
+.topbar button.iconbtn:hover{border-color:var(--gold);color:var(--gold);}
+
+/* ---------- PIXEL CANVAS GENERAL ---------- */
+canvas{image-rendering:pixelated;display:block;}
+
+/* ---------- WORLD MAP ---------- */
+#screen-worldmap{padding:0;}
+.wm-wrap{flex:1;display:flex;flex-direction:column;}
+.wm-canvas-holder{
+  position:relative;flex:1;
+  background:#0a0e1a;
+  overflow:hidden;
+}
+.wm-node{
+  position:absolute;
+  width:70px;height:70px;
+  border:3px solid var(--border-pixel);
+  background:var(--bg-panel);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;
+  font-size:8px;
+  text-align:center;
+  gap:4px;
+  transition:transform .1s;
+}
+.wm-node:hover{transform:scale(1.08);border-color:var(--gold);}
+.wm-node.locked{opacity:.35;cursor:not-allowed;filter:grayscale(1);}
+.wm-node.locked:hover{transform:none;}
+.wm-node.cleared{border-color:var(--green-phase);}
+.wm-node.boss{border-color:var(--red-phase);width:84px;height:84px;}
+.wm-node .wm-icon{font-size:22px;}
+.wm-line{
+  position:absolute;height:3px;background:var(--border-pixel);
+  transform-origin:left center;
+}
+
+/* ---------- BATTLE SCREEN ---------- */
+#screen-battle{
+  background:linear-gradient(180deg,#1a2138 0%, #0d1120 100%);
+}
+.battle-stage{
+  flex:1;position:relative;
+  display:flex;
+  border-bottom:3px solid var(--border-pixel);
+  overflow:hidden;
+}
+.battle-bg-deco{
+  position:absolute;inset:0;
+  opacity:.5;
+  pointer-events:none;
+}
+.fighter-zone{
+  flex:1;position:relative;
+  display:flex;align-items:flex-end;justify-content:center;
+}
+.fighter-zone.enemy-zone{align-items:flex-end;}
+.fighter-sprite-canvas{
+  image-rendering:pixelated;
+  filter:drop-shadow(0 6px 4px rgba(0,0,0,.5));
+}
+.fighter-sprite-canvas.shake{animation:hit-shake .25s;}
+.fighter-sprite-canvas.flash-hit{animation:flash-white .25s;}
+@keyframes hit-shake{
+  0%,100%{transform:translateX(0);}
+  25%{transform:translateX(-6px);}
+  75%{transform:translateX(6px);}
+}
+@keyframes flash-white{
+  0%,100%{filter:drop-shadow(0 6px 4px rgba(0,0,0,.5));}
+  50%{filter:drop-shadow(0 6px 4px rgba(0,0,0,.5)) brightness(3) saturate(0);}
+}
+.hp-tag{
+  position:absolute;
+  top:10px;
+  width:200px;
+  background:var(--bg-panel);
+  border:2px solid var(--border-pixel);
+  padding:6px 8px;
+  font-size:9px;
+}
+.hp-tag.player-tag{left:14px;}
+.hp-tag.enemy-tag{right:14px;text-align:right;}
+.bar-bg{
+  width:100%;height:10px;
+  background:#000;
+  border:1px solid #000;
+  margin-top:3px;
+  position:relative;
+  overflow:hidden;
+}
+.bar-fill{
+  height:100%;
+  background:var(--hp-green);
+  transition:width .35s ease-out;
+}
+.bar-fill.mp{background:var(--mp-blue);}
+.bar-fill.low{background:var(--hp-yellow);}
+.bar-fill.crit{background:var(--hp-red);}
+.ally-portrait{
+  position:absolute;
+  width:54px;height:54px;
+  border:2px solid var(--border-pixel);
+  background:var(--bg-panel);
+  bottom:14px;
+}
+.phase-badge{
+  display:inline-block;
+  font-size:8px;
+  padding:1px 5px;
+  margin-top:2px;
+  border:1px solid currentColor;
+}
+
+.battle-log-box{
+  height:54px;
+  padding:8px 14px;
+  font-size:10px;
+  background:var(--bg-panel);
+  border-bottom:3px solid var(--border-pixel);
+  display:flex;align-items:center;
+  line-height:1.5;
+  flex-shrink:0;
+}
+
+.battle-controls{
+  flex-shrink:0;
+  background:var(--bg-panel);
+  padding:10px 14px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.action-btn{
+  font-family:var(--font-pixel);
+  background:var(--bg-panel-light);
+  border:2px solid var(--border-pixel);
+  color:var(--text-main);
+  padding:10px 14px;
+  font-size:10px;
+  cursor:pointer;
+  flex:1;
+  min-width:90px;
+}
+.action-btn:hover{border-color:var(--gold);color:var(--gold);}
+.action-btn:disabled{opacity:.3;cursor:not-allowed;}
+.action-btn:disabled:hover{border-color:var(--border-pixel);color:var(--text-main);}
+.action-btn.danger{border-color:var(--red-phase);}
+.action-btn.special{border-color:var(--green-phase);}
+
+.submenu{
+  position:absolute;
+  bottom:64px;
+  left:14px;right:14px;
+  background:var(--bg-panel);
+  border:3px solid var(--border-bright);
+  padding:10px;
+  display:none;
+  flex-direction:column;
+  gap:6px;
+  max-height:220px;
+  overflow-y:auto;
+  z-index:50;
+}
+.submenu.active{display:flex;}
+.submenu-item{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:8px 10px;
+  background:var(--bg-panel-light);
+  border:2px solid var(--border-pixel);
+  cursor:pointer;
+  font-size:10px;
+}
+.submenu-item:hover{border-color:var(--gold);}
+.submenu-item:disabled, .submenu-item.disabled{opacity:.35;cursor:not-allowed;}
+.submenu-item .cost-tag{color:var(--mp-blue);font-size:9px;}
+.submenu-close{
+  align-self:flex-end;
+  background:none;border:none;color:var(--text-dim);
+  font-family:var(--font-pixel);font-size:9px;cursor:pointer;
+}
+
+.turn-order-strip{
+  position:absolute;top:10px;left:50%;transform:translateX(-50%);
+  display:flex;gap:4px;
+  z-index:5;
+}
+.turn-chip{
+  width:22px;height:22px;
+  border:2px solid var(--border-pixel);
+  background:var(--bg-panel);
+  font-size:11px;
+  display:flex;align-items:center;justify-content:center;
+}
+.turn-chip.current{border-color:var(--gold);}
+
+/* analyze panel */
+.analyze-panel{
+  position:absolute;
+  top:40px;right:14px;
+  width:220px;
+  background:var(--bg-panel);
+  border:3px solid var(--gold);
+  padding:10px;
+  font-size:9px;
+  line-height:1.6;
+  z-index:60;
+  display:none;
+}
+.analyze-panel.active{display:block;}
+
+/* ---------- MENU / STATS / INVENTORY ---------- */
+#screen-menu{padding:18px;gap:14px;}
+.menu-tabs{display:flex;gap:8px;margin-bottom:10px;flex-shrink:0;}
+.menu-tab{
+  font-family:var(--font-pixel);
+  background:var(--bg-panel);
+  border:2px solid var(--border-pixel);
+  color:var(--text-dim);
+  padding:8px 16px;
+  font-size:10px;
+  cursor:pointer;
+}
+.menu-tab.active{color:var(--gold);border-color:var(--gold);}
+.menu-body{flex:1;overflow-y:auto;padding-right:6px;}
+
+.stat-card{
+  background:var(--bg-panel);
+  border:2px solid var(--border-pixel);
+  padding:14px;
+  margin-bottom:10px;
+  font-size:10px;
+  line-height:1.8;
+}
+.stat-row{display:flex;justify-content:space-between;}
+.phase-select-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+.phase-chip{
+  border:2px solid var(--border-pixel);
+  padding:8px 12px;
+  font-size:9px;
+  cursor:pointer;
+  background:var(--bg-panel-light);
+}
+.phase-chip.locked{opacity:.3;cursor:not-allowed;}
+.phase-chip[data-phase="blue"]{border-color:var(--blue-phase);}
+.phase-chip[data-phase="green"]{border-color:var(--green-phase);}
+.phase-chip[data-phase="red"]{border-color:var(--red-phase);}
+.phase-chip.selected{background:var(--bg-panel-light);box-shadow:0 0 0 2px var(--gold) inset;}
+
+.item-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
+.item-card{
+  background:var(--bg-panel);
+  border:2px solid var(--border-pixel);
+  padding:10px;
+  font-size:9px;
+  line-height:1.6;
+}
+.item-card .item-name{color:var(--gold);font-size:10px;margin-bottom:4px;}
+.use-btn-small{
+  margin-top:6px;
+  font-family:var(--font-pixel);
+  background:var(--bg-panel-light);
+  border:1px solid var(--border-pixel);
+  color:var(--text-main);
+  font-size:8px;
+  padding:4px 8px;
+  cursor:pointer;
+  width:100%;
+}
+.use-btn-small:hover{border-color:var(--gold);}
+
+.skill-tree-list{display:flex;flex-direction:column;gap:8px;}
+.skill-row{
+  display:flex;justify-content:space-between;align-items:center;
+  background:var(--bg-panel);
+  border:2px solid var(--border-pixel);
+  padding:10px;
+  font-size:9px;
+}
+.skill-row.locked{opacity:.4;}
+
+/* ---------- DIALOGUE ---------- */
+.dialogue-box{
+  position:absolute;bottom:0;left:0;right:0;
+  background:var(--bg-panel);
+  border-top:4px solid var(--border-bright);
+  padding:16px 20px;
+  font-size:11px;
+  line-height:1.8;
+  min-height:90px;
+  display:none;
+  z-index:80;
+}
+.dialogue-box.active{display:block;}
+.dialogue-name{color:var(--gold);margin-bottom:6px;font-size:10px;}
+.dialogue-next{
+  position:absolute;bottom:10px;right:16px;
+  font-size:10px;color:var(--text-dim);
+  animation:bounce-arrow 1s infinite;
+}
+@keyframes bounce-arrow{0%,100%{transform:translateY(0);}50%{transform:translateY(4px);}}
+
+/* ---------- MUSIC PANEL ---------- */
+.music-panel{
+  background:var(--bg-panel);
+  border:2px solid var(--border-pixel);
+  padding:14px;
+  font-size:9px;
+  line-height:1.8;
+}
+.music-panel input[type=file]{
+  font-family:var(--font-pixel);
+  font-size:9px;
+  color:var(--text-main);
+}
+.track-slot{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:8px;
+  background:var(--bg-panel-light);
+  border:1px solid var(--border-pixel);
+  margin-top:6px;
+  gap:8px;
+}
+.track-slot button{
+  font-family:var(--font-pixel);
+  background:var(--bg-panel);
+  border:1px solid var(--border-pixel);
+  color:var(--text-main);
+  font-size:8px;
+  padding:4px 8px;
+  cursor:pointer;
+}
+.track-slot button:hover{border-color:var(--gold);}
+.vol-row{display:flex;align-items:center;gap:8px;margin-top:8px;}
+
+/* ---------- TOAST / NOTIFICATIONS ---------- */
+#toast-holder{
+  position:absolute;top:50px;left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;gap:6px;
+  z-index:200;align-items:center;
+  pointer-events:none;
+}
+.toast{
+  background:var(--bg-panel);
+  border:2px solid var(--gold);
+  color:var(--gold);
+  padding:8px 16px;
+  font-size:10px;
+  animation:toast-pop 2.5s forwards;
+}
+@keyframes toast-pop{
+  0%{opacity:0;transform:translateY(-10px);}
+  10%{opacity:1;transform:translateY(0);}
+  85%{opacity:1;}
+  100%{opacity:0;}
+}
+
+/* ---------- LEVEL UP / RESULTS ---------- */
+.result-overlay{
+  position:absolute;inset:0;
+  background:rgba(5,7,15,.92);
+  display:none;
+  align-items:center;justify-content:center;
+  z-index:150;
+  flex-direction:column;
+  gap:10px;
+}
+.result-overlay.active{display:flex;}
+.result-box{
+  background:var(--bg-panel);
+  border:4px solid var(--gold);
+  padding:24px 30px;
+  text-align:center;
+  font-size:11px;
+  line-height:2;
+  min-width:300px;
+}
+.result-box h2{color:var(--gold);font-size:16px;margin-bottom:10px;}
+
+/* ---------- SCROLLBARS ---------- */
+::-webkit-scrollbar{width:8px;}
+::-webkit-scrollbar-track{background:var(--bg-void);}
+::-webkit-scrollbar-thumb{background:var(--border-pixel);}
+
+.hidden{display:none !important;}
+.flex-row{display:flex;gap:8px;align-items:center;}
+.small-dim{color:var(--text-dim);font-size:8px;}
+.center-text{text-align:center;}
+</style>
+</head>
+<body>
+
+<div id="game-root">
+  <div id="game-frame">
+
+    <!-- ============ TITLE SCREEN ============ -->
+    <div class="screen active" id="screen-title">
+      <div class="title-stars"></div>
+      <div class="title-logo">
+        <canvas id="title-sprite-box" width="32" height="32" style="width:96px;height:96px;"></canvas>
+        <h1>DAMIÁN</h1>
+        <div class="subtitle">CRÓNICAS DEL RAYO</div>
+      </div>
+      <div class="menu-list">
+        <button class="menu-btn" id="btn-new-game">NUEVA PARTIDA</button>
+        <button class="menu-btn" id="btn-continue">CONTINUAR</button>
+        <button class="menu-btn" id="btn-infinite">MODO INFINITO</button>
+        <button class="menu-btn" id="btn-music-setup">MÚSICA</button>
+        <button class="menu-btn" id="btn-credits">CRÉDITOS</button>
+      </div>
+      <div class="corner-tag">v1.0 · pixel rpg</div>
+    </div>
+
+    <!-- ============ MUSIC SETUP SCREEN ============ -->
+    <div class="screen" id="screen-music">
+      <div class="topbar">
+        <div class="tb-left"><b>MÚSICA</b></div>
+        <button class="iconbtn" id="btn-music-back">← VOLVER</button>
+      </div>
+      <div class="menu-body" style="padding:18px;overflow-y:auto;">
+        <p class="small-dim" style="margin-bottom:10px;">
+          Subí tus propios MP3 para cada categoría. Si no subís nada, el juego usa música retro generada por código.
+          También podés editar el código fuente (sección CONFIG.musicLibrary) para precargar tus pistas por nombre de archivo.
+        </p>
+        <div id="music-slots"></div>
+        <div class="vol-row">
+          <label class="small-dim">VOLUMEN</label>
+          <input type="range" id="vol-slider" min="0" max="100" value="60">
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ WORLD MAP / HUB ============ -->
+    <div class="screen" id="screen-worldmap">
+      <div class="topbar">
+        <div class="tb-left">
+          <span id="wm-world-title">MUNDO 1</span>
+        </div>
+        <div class="flex-row">
+          <button class="iconbtn" id="btn-open-menu">MENÚ</button>
+          <button class="iconbtn" id="btn-wm-title">SALIR</button>
+        </div>
+      </div>
+      <div class="wm-wrap">
+        <div class="wm-canvas-holder" id="wm-canvas-holder"></div>
+      </div>
+    </div>
+
+    <!-- ============ BATTLE SCREEN ============ -->
+    <div class="screen" id="screen-battle">
+      <div class="topbar">
+        <div class="tb-left"><span id="battle-title">COMBATE</span></div>
+        <button class="iconbtn" id="btn-flee">HUIR</button>
+      </div>
+      <div class="battle-stage" id="battle-stage">
+        <div class="turn-order-strip" id="turn-order-strip"></div>
+
+        <div class="fighter-zone player-zone" id="player-zone">
+          <div class="hp-tag player-tag" id="player-hp-tag"></div>
+        </div>
+        <div class="fighter-zone enemy-zone" id="enemy-zone">
+          <div class="hp-tag enemy-tag" id="enemy-hp-tag"></div>
+        </div>
+
+        <div class="analyze-panel" id="analyze-panel"></div>
+      </div>
+
+      <div class="battle-log-box" id="battle-log"></div>
+
+      <div class="battle-controls" id="battle-controls-main">
+        <button class="action-btn" id="act-attack">ATACAR</button>
+        <button class="action-btn special" id="act-skills">HABILIDADES</button>
+        <button class="action-btn" id="act-phase">FASE</button>
+        <button class="action-btn" id="act-items">ITEMS</button>
+        <button class="action-btn" id="act-ally">ALIADO</button>
+        <button class="action-btn danger" id="act-analyze">ANALIZAR</button>
+      </div>
+
+      <div class="submenu" id="submenu-skills">
+        <button class="submenu-close" data-close-submenu>CERRAR ✕</button>
+        <div id="skills-list"></div>
+      </div>
+      <div class="submenu" id="submenu-phase">
+        <button class="submenu-close" data-close-submenu>CERRAR ✕</button>
+        <div id="phase-list"></div>
+      </div>
+      <div class="submenu" id="submenu-items">
+        <button class="submenu-close" data-close-submenu>CERRAR ✕</button>
+        <div id="items-list"></div>
+      </div>
+      <div class="submenu" id="submenu-ally">
+        <button class="submenu-close" data-close-submenu>CERRAR ✕</button>
+        <div id="ally-list"></div>
+      </div>
+
+      <div class="result-overlay" id="result-overlay">
+        <div class="result-box" id="result-box"></div>
+      </div>
+    </div>
+
+    <!-- ============ MENU / STATUS SCREEN ============ -->
+    <div class="screen" id="screen-menu">
+      <div class="topbar">
+        <div class="tb-left"><b>MENÚ</b></div>
+        <button class="iconbtn" id="btn-menu-back">← VOLVER</button>
+      </div>
+      <div class="menu-tabs">
+        <button class="menu-tab active" data-tab="status">ESTADO</button>
+        <button class="menu-tab" data-tab="phases">FASES</button>
+        <button class="menu-tab" data-tab="skills">HABILIDADES</button>
+        <button class="menu-tab" data-tab="items">ITEMS</button>
+        <button class="menu-tab" data-tab="allies">ALIADOS</button>
+        <button class="menu-tab" data-tab="music">MÚSICA</button>
+      </div>
+      <div class="menu-body" id="menu-body"></div>
+    </div>
+
+    <!-- ============ DIALOGUE OVERLAY (usable on any screen) ============ -->
+    <div class="dialogue-box" id="dialogue-box">
+      <div class="dialogue-name" id="dialogue-name"></div>
+      <div id="dialogue-text"></div>
+      <div class="dialogue-next">▼ TOCÁ PARA CONTINUAR</div>
+    </div>
+
+    <div id="toast-holder"></div>
+    <div class="crt-overlay"></div>
+  </div>
+</div>
+
+<audio id="audio-player" loop></audio>
+
+<script src="game.js"></script>
+</body>
+</html>
